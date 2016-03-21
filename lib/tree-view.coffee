@@ -195,10 +195,24 @@ class TreeView extends View
     @list.is(':focus') or document.activeElement is @list[0]
 
   toggleFocus: ->
+    console.log "toggle focus"
     if @hasFocus()
       @unfocus()
     else
       @show()
+
+  clicked: (entry) ->
+      @selectEntry(entry)
+      if entry instanceof FileView
+        if entry.getPath() is atom.workspace.getActivePaneItem()?.getPath?()
+          @openedItem = Promise.resolve(atom.workspace.getActivePaneItem())
+          @focus()
+        else
+          @openedItem = atom.workspace.open(entry.getPath(), activatePane: false, pending: true)
+      else if entry instanceof DirectoryView
+        entry.toggleExpansion(isRecursive)
+      return
+
 
   entryClicked: (e) ->
     entry = e.currentTarget
@@ -211,7 +225,7 @@ class TreeView extends View
             @openedItem = Promise.resolve(atom.workspace.getActivePaneItem())
             @focus()
           else
-            @openedItem = atom.workspace.open(entry.getPath(), pending: true)
+            @openedItem = atom.workspace.open(entry.getPath(), activatePane: false, pending: true)
         else if entry instanceof DirectoryView
           entry.toggleExpansion(isRecursive)
       when 2
@@ -359,6 +373,7 @@ class TreeView extends View
       until @selectEntry(selectedEntry.next('.entry')[0])
         selectedEntry = selectedEntry.parents('.entry:first')
         break unless selectedEntry.length
+      @clicked(@selectedEntry())
     else
       @selectEntry(@roots[0])
 
@@ -372,6 +387,8 @@ class TreeView extends View
       if previousEntry = @selectEntry(selectedEntry.prev('.entry')[0])
         if previousEntry instanceof DirectoryView
           @selectEntry(_.last(previousEntry.entries.children))
+        else
+          @clicked(@selectedEntry())
       else
         @selectEntry(selectedEntry.parents('.directory').first()?[0])
     else
